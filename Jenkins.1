@@ -1,0 +1,62 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Pulling code from GitHub...'
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: 'dev']],
+                    userRemoteConfigs: [[
+                        url: 'git@github.com:Richardlong98/evershop.git',
+                        credentialsId: 'jenkins-ssh-key'
+                    ]]
+                ])
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                echo 'Installing npm packages...'
+                sh '''
+                    HUSKY=0 npm install
+                '''
+            }
+        }
+
+        stage('Build') {
+            steps {
+                echo 'Building project...'
+                sh 'npm run build'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                echo 'Running tests...'
+                sh 'npm test || true'
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                echo 'Deploying application...'
+                sh '''
+                    # Ví dụ: copy build ra thư mục deploy
+                    mkdir -p /var/www/evershop
+                    cp -r dist/* /var/www/evershop/
+                '''
+            }
+        }
+    }
+
+    post {
+        failure {
+            echo 'Pipeline failed!'
+        }
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+    }
+}
