@@ -1,16 +1,28 @@
-FROM node:18-alpine
+FROM node:20-alpine AS builder
 WORKDIR /app
-RUN npm install -g npm@9
-COPY package*.json .
+
+# Update npm
+RUN npm install -g npm@11
+
+# Copy package files
+COPY package.json package-lock.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy source code
 COPY packages ./packages
-COPY themes ./themes
 COPY extensions ./extensions
+COPY themes ./themes
 COPY public ./public
 COPY media ./media
-COPY config ./config
 COPY translations ./translations
-RUN npm install
+# Nếu folder config có trong repo
+COPY config ./config
+
+# Build
 RUN npm run build
 
 EXPOSE 80
+
 CMD ["npm", "run", "start"]
