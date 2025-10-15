@@ -13,12 +13,8 @@ RUN npm install
 # Copy source code
 COPY packages ./packages
 COPY extensions ./extensions
-COPY themes ./themes
-COPY public ./public
-COPY media ./media
 COPY translations ./translations
 # Nếu folder config có trong repo
-COPY config ./config
 
 # Build
 RUN npm run build
