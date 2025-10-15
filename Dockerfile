@@ -1,22 +1,19 @@
-# --- Stage 1: Build Evershop app ---
+# --- Stage 1: Build Node App ---
 FROM node:20-alpine AS builder
-
-# Set working directory
 WORKDIR /app
 
 # Cập nhật npm
 RUN npm install -g npm@11
 
-# Copy package.json và package-lock.json
+# Copy package.json và lock file
 COPY package.json package-lock.json ./
 
 # Cài dependencies
 RUN npm install
 
-# Copy tất cả các thư mục cần thiết (bỏ themes nếu không có)
+# Copy các folder có thật trong repo
 COPY packages ./packages
 COPY extensions ./extensions
-COPY public ./public
 COPY media ./media
 COPY config ./config
 COPY translations ./translations
@@ -24,18 +21,17 @@ COPY translations ./translations
 # Build app
 RUN npm run build
 
-# --- Stage 2: Run app ---
+# --- Stage 2: Prepare Production Image ---
 FROM node:20-alpine
-
 WORKDIR /app
 
-# Copy từ stage builder
+# Copy từ builder
 COPY --from=builder /app /app
 
-# Install production dependencies nếu cần (nếu có "optionalDependencies" trong package.json)
+# Cài production dependencies
 RUN npm ci --only=production
 
-# Expose port 80
+# Mở port
 EXPOSE 80
 
 # Chạy app
