@@ -13,7 +13,6 @@ RUN npm install
 # Copy các thư mục cần thiết
 COPY packages ./packages
 COPY extensions ./extensions
-COPY public ./public
 COPY translations ./translations
 
 # Build packages (thường dùng typescript hoặc lerna)
