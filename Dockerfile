@@ -1,24 +1,26 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Update npm
+# Cài npm mới nhất
 RUN npm install -g npm@11
 
-# Copy package files
+# Copy file lock và package.json
 COPY package.json package-lock.json ./
 
-# Install dependencies
+# Cài dependencies
 RUN npm install
 
-# Copy source code
+# Copy các thư mục cần thiết
 COPY packages ./packages
 COPY extensions ./extensions
+COPY public ./public
 COPY translations ./translations
-# Nếu folder config có trong repo
 
-# Build
+# Build packages (thường dùng typescript hoặc lerna)
+RUN npm run build:packages
+
+# Build toàn bộ app
 RUN npm run build
 
 EXPOSE 80
-
 CMD ["npm", "run", "start"]
