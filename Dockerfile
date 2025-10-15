@@ -2,37 +2,31 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Cập nhật npm
+# Update npm
 RUN npm install -g npm@11
 
-# Copy package.json và lock file
+# Copy package.json & package-lock.json và cài đặt dependencies
 COPY package.json package-lock.json ./
-
-# Cài dependencies
 RUN npm install
 
-# Copy các folder có thật trong repo
+# Copy các thư mục tồn tại trên branch dev
 COPY packages ./packages
 COPY extensions ./extensions
-COPY media ./media
-COPY config ./config
 COPY translations ./translations
+COPY config ./config
 
 # Build app
 RUN npm run build
 
-# --- Stage 2: Prepare Production Image ---
+# --- Stage 2: Run App ---
 FROM node:20-alpine
 WORKDIR /app
 
-# Copy từ builder
+# Copy từ stage builder
 COPY --from=builder /app /app
 
-# Cài production dependencies
-RUN npm ci --only=production
-
-# Mở port
+# Expose port
 EXPOSE 80
 
-# Chạy app
+# Start ứng dụng
 CMD ["npm", "run", "start"]
