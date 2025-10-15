@@ -1,25 +1,30 @@
+# Stage 1: Build
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Cài npm mới nhất
+# Cập nhật npm
 RUN npm install -g npm@11
 
-# Copy file lock và package.json
+# Copy file lock & package.json
 COPY package.json package-lock.json ./
 
 # Cài dependencies
 RUN npm install
 
-# Copy các thư mục cần thiết
+# Copy các thư mục tồn tại
 COPY packages ./packages
 COPY extensions ./extensions
 COPY translations ./translations
 
-# Build packages (thường dùng typescript hoặc lerna)
-RUN npm run build:packages
-
 # Build toàn bộ app
 RUN npm run build
+
+# Stage 2: Run
+FROM node:20-alpine
+WORKDIR /app
+
+# Copy từ stage build
+COPY --from=builder /app .
 
 EXPOSE 80
 CMD ["npm", "run", "start"]
