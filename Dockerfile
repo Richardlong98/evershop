@@ -3,14 +3,14 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Thiết lập môi trường là production để đảm bảo chỉ cài đặt dependency cần thiết
+# Thiết lập môi trường là production
 ENV NODE_ENV=production
 
 # 1. Tối ưu caching: Copy file lock/package trước để cài đặt dependencies
 COPY package.json package-lock.json ./
 
-# Sử dụng 'npm ci' (clean install) và '--omit=dev' để chỉ cài đặt production dependencies
-RUN npm ci --omit=dev
+# Sửa lỗi: Cài đặt tất cả dependencies (bao gồm dev tools như husky) để đảm bảo build thành công.
+RUN npm ci
 
 # 2. Copy mã nguồn (cấu trúc Evershop)
 COPY packages ./packages
@@ -21,6 +21,9 @@ COPY config ./config
 # 3. Build ứng dụng
 RUN npm run build
 
+# Tối ưu hóa: Loại bỏ dev dependencies khỏi node_modules SAU KHI build hoàn tất,
+# để Stage 2 chỉ sao chép các tệp cần thiết cho runtime.
+RUN npm prune --production
 
 # --- Stage 2: Minimal Runtime Image (Production Runner) ---
 # Sử dụng lại Node 20 Alpine cho runtime để giữ image cuối cùng nhỏ gọn
@@ -34,6 +37,7 @@ USER nodejs
 
 # 1. Copy production node_modules và các file cần thiết (chỉ những thứ cần chạy)
 # Sử dụng --chown để đảm bảo file thuộc về người dùng 'nodejs'
+# Thư mục node_modules giờ đây đã được làm sạch (prune) ở Stage 1
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
 
