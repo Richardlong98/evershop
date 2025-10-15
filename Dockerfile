@@ -3,13 +3,11 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Thiết lập môi trường là production
-ENV NODE_ENV=production
-
 # 1. Tối ưu caching: Copy file lock/package trước để cài đặt dependencies
 COPY package.json package-lock.json ./
 
 # Sửa lỗi: Cài đặt tất cả dependencies (bao gồm dev tools như husky) để đảm bảo build thành công.
+# Xóa ENV NODE_ENV=production ở đây để npm ci cài đặt cả devDependencies.
 RUN npm ci
 
 # 2. Copy mã nguồn (cấu trúc Evershop)
@@ -38,16 +36,16 @@ USER nodejs
 # 1. Copy production node_modules và các file cần thiết (chỉ những thứ cần chạy)
 # Sử dụng --chown để đảm bảo file thuộc về người dùng 'nodejs'
 # Thư mục node_modules giờ đây đã được làm sạch (prune) ở Stage 1
-COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
+COPY --from-builder --chown=nodejs:nodejs /app/node_modules ./node_modules
+COPY --from-builder --chown=nodejs:nodejs /app/package*.json ./
 
 # 2. Copy các thư mục code đã được build
-COPY --from=builder --chown=nodejs:nodejs /app/packages ./packages
-COPY --from=builder --chown=nodejs:nodejs /app/extensions ./extensions
-COPY --from=builder --chown=nodejs:nodejs /app/translations ./translations
-COPY --from=builder --chown=nodejs:nodejs /app/config ./config
+COPY --from-builder --chown=nodejs:nodejs /app/packages ./packages
+COPY --from-builder --chown=nodejs:nodejs /app/extensions ./extensions
+COPY --from-builder --chown=nodejs:nodejs /app/translations ./translations
+COPY --from-builder --chown=nodejs:nodejs /app/config ./config
 
-# Thiết lập biến môi trường
+# Thiết lập biến môi trường cho runtime
 ENV NODE_ENV=production
 ENV PORT=3000
 
@@ -57,3 +55,4 @@ EXPOSE 3000
 # K8s Ready CMD: Sử dụng định dạng exec form ([]) để xử lý tín hiệu tốt hơn
 # Đây là lệnh khởi động ứng dụng
 CMD ["npm", "run", "start"]
+
