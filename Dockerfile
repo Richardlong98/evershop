@@ -1,58 +1,21 @@
-# --- Stage 1: Build & Install Dependencies (Builder) ---
-# Sử dụng Node 20 Alpine làm base image cho quá trình build (nhẹ và hiệu quả)
 FROM node:20-alpine AS builder
+
 WORKDIR /app
 
-# 1. Tối ưu caching: Copy file lock/package trước để cài đặt dependencies
-COPY package.json package-lock.json ./
+RUN npm install -g npm@11
 
-# Sửa lỗi: Cài đặt tất cả dependencies (bao gồm dev tools như husky) để đảm bảo build thành công.
-# Xóa ENV NODE_ENV=production ở đây để npm ci cài đặt cả devDependencies.
-RUN npm ci
-
-# 2. Copy mã nguồn (cấu trúc Evershop)
+COPY package*.json ./
 COPY packages ./packages
-COPY extensions ./extensions
-COPY translations ./translations
-COPY config ./config
+COPY babel.config.js ./
 
-# 3. Build ứng dụng
-RUN npm run build
+RUN npm install
 
-# Tối ưu hóa: Loại bỏ dev dependencies khỏi node_modules SAU KHI build hoàn tất,
-# để Stage 2 chỉ sao chép các tệp cần thiết cho runtime.
-RUN npm prune --production
-
-# --- Stage 2: Minimal Runtime Image (Production Runner) ---
-# Sử dụng lại Node 20 Alpine cho runtime để giữ image cuối cùng nhỏ gọn
 FROM node:20-alpine
+
 WORKDIR /app
 
-# --- K8s Security Best Practice: Create and switch to a non-root user ---
-# Tạo nhóm và người dùng 'nodejs' (UID/GID 1000 là tiêu chuẩn)
-RUN addgroup -g 1000 nodejs && adduser -u 1000 -G nodejs -s /bin/sh -D nodejs
-USER nodejs
+COPY --from=builder /app /app
 
-# 1. Copy production node_modules và các file cần thiết (chỉ những thứ cần chạy)
-# Sử dụng --chown để đảm bảo file thuộc về người dùng 'nodejs'
-# Thư mục node_modules giờ đây đã được làm sạch (prune) ở Stage 1
-COPY --from-builder --chown=nodejs:nodejs /app/node_modules ./node_modules
-COPY --from-builder --chown=nodejs:nodejs /app/package*.json ./
-
-# 2. Copy các thư mục code đã được build
-COPY --from-builder --chown=nodejs:nodejs /app/packages ./packages
-COPY --from-builder --chown=nodejs:nodejs /app/extensions ./extensions
-COPY --from-builder --chown=nodejs:nodejs /app/translations ./translations
-COPY --from-builder --chown=nodejs:nodejs /app/config ./config
-
-# Thiết lập biến môi trường cho runtime
-ENV NODE_ENV=production
-ENV PORT=3000
-
-# Expose cổng chuẩn của Node.js (tránh cổng 80/443 yêu cầu quyền root)
 EXPOSE 3000
 
-# K8s Ready CMD: Sử dụng định dạng exec form ([]) để xử lý tín hiệu tốt hơn
-# Đây là lệnh khởi động ứng dụng
-CMD ["npm", "run", "start"]
-
+CMD ["npm", "run", "dev"]
